@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, XCircle, AlertCircle, CalendarClock, UserCheck, UserX } from 'lucide-react';
+import { Calendar, CheckCircle2, XCircle, AlertCircle, CalendarClock, UserCheck, UserX, Loader2, Download, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Button from '../components/Button';
 import Badge from '../components/Badge';
@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
 export default function Attendance() {
-  const { state } = useData();
+  const { state, isLoading } = useData();
   const { role } = useAuth();
   const { addToast } = useToast();
   
@@ -22,15 +22,32 @@ export default function Attendance() {
     addToast(`You have marked yourself as ${status.toUpperCase()} today.`, status === 'present' ? 'success' : 'warning');
   };
 
-  const attendanceLogHeaders = ["Date", "Shift", "Status", "In Time", "Notes"];
+  const attendanceLogHeaders = ["Date", "Shift", "Status", "In Time", "Out Time", "Overtime", "Notes"];
   
   // Dummy data specifically for the logged in user
   const personalLogs = [
-    { date: 'Oct 18, 2023', shift: 'Shift A', status: 'Present', time: '07:55 AM', notes: 'On Time' },
-    { date: 'Oct 17, 2023', shift: 'Shift A', status: 'Present', time: '08:02 AM', notes: 'Grace Period' },
-    { date: 'Oct 16, 2023', shift: 'Shift A', status: 'Late', time: '08:45 AM', notes: 'Traffic' },
-    { date: 'Oct 14, 2023', shift: 'Shift B', status: 'Absent', time: '--', notes: 'Sick Leave applied' },
+    { date: 'Oct 18, 2023', shift: 'Shift A', status: 'Present', time: '07:55 AM', outTime: '04:15 PM', overtime: '15m', notes: 'On Time' },
+    { date: 'Oct 17, 2023', shift: 'Shift A', status: 'Present', time: '08:02 AM', outTime: '05:30 PM', overtime: '1h 30m', notes: 'Grace Period' },
+    { date: 'Oct 16, 2023', shift: 'Shift A', status: 'Late', time: '08:45 AM', outTime: '04:00 PM', overtime: '0m', notes: 'Traffic' },
+    { date: 'Oct 14, 2023', shift: 'Shift B', status: 'Absent', time: '--', outTime: '--', overtime: '--', notes: 'Sick Leave applied' },
   ];
+
+  const exportCSV = () => {
+    const headers = attendanceLogHeaders.join(",");
+    const rows = personalLogs.map(log => 
+      `"${log.date}","${log.shift}","${log.status}","${log.time}","${log.outTime}","${log.overtime}","${log.notes}"`
+    ).join("\n");
+    const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows;
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "attendance_log.csv");
+    document.body.appendChild(link); // Required for FF
+    link.click();
+    
+    addToast("CSV Export downloaded successfully!", "success");
+  };
 
   const renderLog = (log) => (
     <React.Fragment key={log.date}>
@@ -40,9 +57,33 @@ export default function Attendance() {
          <Badge variant={log.status === 'Present' ? 'success' : log.status === 'Late' ? 'warning' : 'danger'}>{log.status}</Badge>
        </td>
        <td className="px-6 py-4 font-bold text-gray-700">{log.time}</td>
+       <td className="px-6 py-4 font-bold text-gray-700">{log.outTime}</td>
+       <td className="px-6 py-4">
+         {log.overtime !== '0m' && log.overtime !== '--' ? (
+           <span className="text-orange-600 font-bold bg-orange-50 px-2 py-1 rounded">{log.overtime}</span>
+         ) : (
+           <span className="text-gray-400 font-medium">{log.overtime}</span>
+         )}
+       </td>
        <td className="px-6 py-4 text-sm text-gray-500 italic">{log.notes}</td>
     </React.Fragment>
   );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 h-40 bg-gray-200 rounded-3xl animate-pulse" />
+          <div className="h-40 bg-gray-200 rounded-3xl animate-pulse" />
+          <div className="md:col-span-3 h-24 bg-gray-200 rounded-xl animate-pulse border border-gray-100" />
+        </div>
+        <div className="glass-panel p-6 rounded-3xl h-[400px] flex items-center justify-center animate-pulse border border-gray-100">
+           <Loader2 className="w-8 h-8 text-[#2E7D32] animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-20">
@@ -96,10 +137,28 @@ export default function Attendance() {
         </motion.div>
       </div>
 
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="glass-panel p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between bg-orange-50/30">
+        <div className="flex items-center gap-4">
+           <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
+             <Clock className="w-6 h-6" />
+           </div>
+           <div>
+             <h3 className="text-lg font-bold text-gray-800 tracking-tight">Overtime Tracked</h3>
+             <p className="text-sm text-gray-500 font-medium">Total accumulated overtime for the current cycle</p>
+           </div>
+        </div>
+        <div className="text-right">
+           <p className="text-3xl font-black text-orange-600">12h 45m</p>
+           <p className="text-xs text-orange-800/60 font-bold uppercase tracking-wider mt-1">+ ₹3,400 Estimated</p>
+        </div>
+      </motion.div>
+
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="glass-panel p-6 rounded-3xl border border-gray-100 shadow-sm mt-8">
          <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-bold text-gray-800">My Monthly Logs</h3>
-            <Button variant="outline" className="py-2 px-4 shadow-none">Download PDF</Button>
+            <Button variant="outline" className="py-2 px-4 shadow-none bg-white" onClick={exportCSV}>
+              <Download className="w-4 h-4 mr-2" /> Export CSV
+            </Button>
          </div>
          <Table headers={attendanceLogHeaders} data={personalLogs} renderRow={renderLog} />
       </motion.div>

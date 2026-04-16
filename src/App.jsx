@@ -9,6 +9,7 @@ import Leaves from './pages/Leaves';
 import Departments from './pages/Departments';
 import Notices from './pages/Notices';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import { useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute({ children }) {
@@ -31,6 +32,7 @@ function App() {
           <Route path="departments" element={<Departments />} />
           <Route path="notices" element={<Notices />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

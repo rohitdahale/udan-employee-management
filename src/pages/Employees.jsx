@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { Search, Filter, Plus, MoreVertical, Mail, Phone, Edit, Trash2, Eye, User } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState, useMemo } from 'react';
+import { Search, Filter, Plus, MoreVertical, Mail, Phone, Edit, Trash2, Eye, User, UploadCloud, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/Button';
 import Badge from '../components/Badge';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
 import { useData } from '../contexts/DataContext';
-import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 export default function Employees() {
-  const { state, dispatch } = useData();
+  const { state, dispatch, isLoading } = useData();
   const { role } = useAuth();
   const { addToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,7 +31,7 @@ export default function Employees() {
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
-    const newEmp = { ...formData, id: `EMP${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}` };
+    const newEmp = { ...formData, id: `EMP${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`, joinDate: new Date().toISOString().split('T')[0] };
     dispatch({ type: 'ADD_EMPLOYEE', payload: newEmp });
     addToast(`${newEmp.name} has been added successfully!`, 'success');
     setIsAddOpen(false);
@@ -58,10 +58,28 @@ export default function Employees() {
     setActiveMenuId(null);
   };
 
-  const filteredEmployees = state.employees.filter(e => 
-    e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    e.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Advanced Filters & Pagination
+  const [filterDept, setFilterDept] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  const filteredEmployees = useMemo(() => {
+    return state.employees.filter(e => {
+      const matchSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.role.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchDept = filterDept ? e.dept === filterDept : true;
+      const matchStatus = filterStatus ? e.status === filterStatus : true;
+      return matchSearch && matchDept && matchStatus;
+    });
+  }, [state.employees, searchTerm, filterDept, filterStatus]);
+
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const currentEmployees = filteredEmployees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
 
   const headers = ["Employee", "Contact Info", "Department", "Status", ...(isManager ? ["Actions"] : [])];
 
@@ -114,6 +132,20 @@ export default function Employees() {
     </React.Fragment>
   );
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between">
+          <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse" />
+          <div className="h-10 w-32 bg-gray-200 rounded-xl animate-pulse" />
+        </div>
+        <div className="glass-panel p-6 rounded-2xl h-[500px] flex items-center justify-center animate-pulse border border-gray-100">
+           <Loader2 className="w-8 h-8 text-[#2E7D32] animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -127,7 +159,7 @@ export default function Employees() {
       </div>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
             <input
@@ -135,14 +167,65 @@ export default function Employees() {
               placeholder="Search employee by name, ID or role..."
               className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#66BB6A]/50 transition-all focus:bg-white font-medium shadow-inner"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             />
           </div>
-          <Button variant="outline" className="px-6 py-3.5 bg-white"><Filter className="w-4 h-4 mr-2" /> Filters</Button>
+          <Button variant={showFilters ? 'primary' : 'outline'} onClick={() => setShowFilters(!showFilters)} className={`px-6 py-3.5 ${!showFilters && 'bg-white'}`}>
+            <Filter className="w-4 h-4 mr-2" /> Filters
+          </Button>
         </div>
 
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }} 
+              animate={{ height: 'auto', opacity: 1 }} 
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-6"
+            >
+              <div className="flex gap-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                 <div className="flex-1">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Department</label>
+                    <select value={filterDept} onChange={(e) => { setFilterDept(e.target.value); setCurrentPage(1); }} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#66BB6A]/50 outline-none">
+                      <option value="">All Departments</option>
+                      <option value="Production">Production</option>
+                      <option value="Quality">Quality</option>
+                      <option value="Packaging">Packaging</option>
+                      <option value="HR">HR</option>
+                      <option value="Accounts">Accounts</option>
+                      <option value="Maintenance">Maintenance</option>
+                      <option value="Sales">Sales</option>
+                    </select>
+                 </div>
+                 <div className="flex-1">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Status</label>
+                    <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#66BB6A]/50 outline-none">
+                      <option value="">All Statuses</option>
+                      <option value="Active">Active</option>
+                      <option value="On Leave">On Leave</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                 </div>
+                 <div className="flex items-end">
+                    <Button variant="outline" onClick={() => { setFilterDept(''); setFilterStatus(''); setSearchTerm(''); setCurrentPage(1); }} className="px-4 py-2 text-sm bg-white border-dashed">Clear Filters</Button>
+                 </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {filteredEmployees.length > 0 ? (
-          <Table headers={headers} data={filteredEmployees} renderRow={renderRow} />
+          <>
+            <Table headers={headers} data={currentEmployees} renderRow={renderRow} />
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+               <span className="text-sm font-medium text-gray-500">Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredEmployees.length)} of {filteredEmployees.length} employees</span>
+               <div className="flex items-center gap-2">
+                 <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="p-2 border border-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-50 focus:ring-2 focus:ring-[#66BB6A]/50 transition-all"><ChevronLeft className="w-4 h-4" /></button>
+                 <span className="text-sm font-bold w-10 text-center">{currentPage} / {totalPages}</span>
+                 <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border border-gray-200 rounded-lg disabled:opacity-50 hover:bg-gray-50 focus:ring-2 focus:ring-[#66BB6A]/50 transition-all"><ChevronRight className="w-4 h-4" /></button>
+               </div>
+            </div>
+          </>
         ) : (
           <EmptyState title="No employees found" description="We couldn't find any staff matching your search criteria." />
         )}
@@ -155,6 +238,13 @@ export default function Employees() {
         title={isAddOpen ? "Add New Employee" : "Edit Employee Details"}
       >
         <form onSubmit={isAddOpen ? handleAddSubmit : handleEditSubmit} className="space-y-5">
+          <div className="flex flex-col items-center justify-center p-4 border border-dashed border-gray-300 rounded-xl bg-gray-50 mb-6 group hover:border-[#66BB6A] hover:bg-[#E8F5E9]/30 transition-all cursor-pointer">
+             <div className="w-16 h-16 rounded-full bg-gray-200 mb-3 flex items-center justify-center border-4 border-white shadow-sm overflow-hidden group-hover:scale-105 transition-transform">
+               {formData.name ? <span className="text-xl font-bold text-gray-600">{formData.name.charAt(0)}</span> : <User className="w-8 h-8 text-gray-400" />}
+             </div>
+             <p className="text-sm font-semibold text-gray-600 flex items-center gap-2 group-hover:text-[#2E7D32]"><UploadCloud className="w-4 h-4" /> Upload Profile Picture</p>
+          </div>
+          
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="sm:col-span-2">
               <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-2"><User className="w-4 h-4" /> Full Name</label>

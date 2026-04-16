@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   Building2, Users, CalendarPlus, FileText, 
-  LayoutDashboard, Megaphone, UserCircle, LogOut 
+  LayoutDashboard, Megaphone, UserCircle, LogOut, Settings as SettingsIcon 
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,6 +24,7 @@ export default function Sidebar() {
     ...(role === 'admin' ? [{ name: 'Departments', href: '/departments', icon: Building2 }] : []),
     { name: 'Notices', href: '/notices', icon: Megaphone },
     { name: 'Profile', href: '/profile', icon: UserCircle },
+    { name: 'Settings', href: '/settings', icon: SettingsIcon },
   ];
 
   return (

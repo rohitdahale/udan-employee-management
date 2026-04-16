@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { CalendarRange, Check, X, ClipboardList } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CalendarRange, Check, X, ClipboardList, Loader2, MessageSquare, Clock, User } from 'lucide-react';
 import Button from '../components/Button';
 import Badge from '../components/Badge';
 import Table from '../components/Table';
@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
 export default function Leaves() {
-  const { state, dispatch } = useData();
+  const { state, dispatch, isLoading } = useData();
   const { user, role } = useAuth();
   const { addToast } = useToast();
   
@@ -19,6 +19,10 @@ export default function Leaves() {
   const [formData, setFormData] = useState({ type: 'Casual Leave', startDate: '', endDate: '', reason: '' });
 
   const isManager = role === 'admin' || role === 'hr';
+
+  // Details Modal State
+  const [selectedLeave, setSelectedLeave] = useState(null);
+  const [managerComment, setManagerComment] = useState('');
 
   // Filters for DataContext based on Tab/Role
   const myLeaves = state.leaves.filter(l => l.empId === user?.id);
@@ -39,9 +43,18 @@ export default function Leaves() {
     setFormData({ type: 'Casual Leave', startDate: '', endDate: '', reason: '' });
   };
 
-  const handleAction = (leave, status) => {
-    dispatch({ type: 'UPDATE_LEAVE', payload: { ...leave, status } });
+  const handleAction = (status) => {
+    dispatch({ 
+      type: 'UPDATE_LEAVE', 
+      payload: { 
+        ...selectedLeave, 
+        status, 
+        comments: [...(selectedLeave.comments || []), { author: user.name, text: managerComment, date: new Date().toISOString() }] 
+      } 
+    });
     addToast(`Leave request ${status.toLowerCase()}!`, status === 'Approved' ? 'success' : 'error');
+    setSelectedLeave(null);
+    setManagerComment('');
   };
 
   const myLeavesHeaders = ["Leave Type", "Duration", "Applied On", "Status", "Reason"];
@@ -52,7 +65,7 @@ export default function Leaves() {
       <td className="px-6 py-4 font-bold text-gray-800">{leave.type}</td>
       <td className="px-6 py-4 text-gray-600 font-medium">{leave.startDate} <span className="text-gray-400 mx-1">to</span> {leave.endDate}</td>
       <td className="px-6 py-4 text-gray-500 font-medium">Oct 16, 2023</td>
-      <td className="px-6 py-4">
+      <td className="px-6 py-4 cursor-pointer" onClick={() => setSelectedLeave(leave)}>
         <Badge variant={leave.status === 'Approved' ? 'success' : leave.status === 'Pending' ? 'warning' : 'danger'}>{leave.status}</Badge>
       </td>
       <td className="px-6 py-4 text-gray-500 italic max-w-xs truncate">{leave.reason}</td>
@@ -66,13 +79,24 @@ export default function Leaves() {
       <td className="px-6 py-4 text-gray-600 font-medium">{leave.startDate} <span className="text-gray-400 mx-1">to</span> {leave.endDate}</td>
       <td className="px-6 py-4 text-gray-500 italic max-w-xs">{leave.reason}</td>
       <td className="px-6 py-4">
-        <div className="flex gap-2">
-           <button onClick={() => handleAction(leave, 'Approved')} className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-colors focus:ring-2 focus:ring-green-300"><Check className="w-5 h-5"/></button>
-           <button onClick={() => handleAction(leave, 'Rejected')} className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors focus:ring-2 focus:ring-red-300"><X className="w-5 h-5"/></button>
-        </div>
+         <Button variant="outline" size="sm" onClick={() => setSelectedLeave(leave)}>Review</Button>
       </td>
     </React.Fragment>
   );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {[1,2,3].map(i => <div key={i} className="h-32 bg-gray-200 rounded-2xl animate-pulse" />)}
+        </div>
+        <div className="glass-panel p-6 rounded-3xl h-[400px] flex items-center justify-center animate-pulse border border-gray-100">
+           <Loader2 className="w-8 h-8 text-[#2E7D32] animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-20">
@@ -85,15 +109,18 @@ export default function Leaves() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="glass-panel p-5 rounded-2xl border border-green-100 shadow-sm flex items-center justify-between bg-green-50/50">
+        <motion.div whileHover={{ y: -5 }} className="glass-panel p-5 rounded-2xl border-b-4 border-b-green-500 shadow-sm flex flex-col justify-between bg-gradient-to-br from-green-50 to-white hover:shadow-md transition-all">
            <div><p className="text-sm font-bold text-green-800 mb-1">Casual Leave (CL)</p><h3 className="text-3xl font-black text-green-700">08<span className="text-sm font-medium text-green-600/60 ml-2">/ 12 remaining</span></h3></div>
-        </div>
-        <div className="glass-panel p-5 rounded-2xl border border-blue-100 shadow-sm flex items-center justify-between bg-blue-50/50">
+           <div className="w-full bg-green-100 h-1.5 rounded-full mt-4"><div className="bg-green-500 h-1.5 rounded-full" style={{ width: '66%' }}></div></div>
+        </motion.div>
+        <motion.div whileHover={{ y: -5 }} className="glass-panel p-5 rounded-2xl border-b-4 border-b-blue-500 shadow-sm flex flex-col justify-between bg-gradient-to-br from-blue-50 to-white hover:shadow-md transition-all">
            <div><p className="text-sm font-bold text-blue-800 mb-1">Sick Leave (SL)</p><h3 className="text-3xl font-black text-blue-700">05<span className="text-sm font-medium text-blue-600/60 ml-2">/ 07 remaining</span></h3></div>
-        </div>
-        <div className="glass-panel p-5 rounded-2xl border border-purple-100 shadow-sm flex items-center justify-between bg-purple-50/50">
+           <div className="w-full bg-blue-100 h-1.5 rounded-full mt-4"><div className="bg-blue-500 h-1.5 rounded-full" style={{ width: '71%' }}></div></div>
+        </motion.div>
+        <motion.div whileHover={{ y: -5 }} className="glass-panel p-5 rounded-2xl border-b-4 border-b-purple-500 shadow-sm flex flex-col justify-between bg-gradient-to-br from-purple-50 to-white hover:shadow-md transition-all">
            <div><p className="text-sm font-bold text-purple-800 mb-1">Earned Leave (EL)</p><h3 className="text-3xl font-black text-purple-700">14<span className="text-sm font-medium text-purple-600/60 ml-2">/ 20 remaining</span></h3></div>
-        </div>
+           <div className="w-full bg-purple-100 h-1.5 rounded-full mt-4"><div className="bg-purple-500 h-1.5 rounded-full" style={{ width: '70%' }}></div></div>
+        </motion.div>
       </div>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 bg-white">
@@ -171,6 +198,73 @@ export default function Leaves() {
            </div>
          </form>
       </Modal>
+
+      <Modal isOpen={!!selectedLeave} onClose={() => { setSelectedLeave(null); setManagerComment(''); }} title="Leave Details & Timeline">
+         {selectedLeave && (
+           <div className="space-y-6">
+             <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <div className="flex justify-between items-start mb-2">
+                   <div>
+                     <h4 className="font-bold text-gray-800 text-lg">{selectedLeave.type}</h4>
+                     <p className="text-sm text-gray-500 font-medium">Requested by <span className="font-bold text-gray-700">{selectedLeave.empName}</span></p>
+                   </div>
+                   <Badge variant={selectedLeave.status === 'Approved' ? 'success' : selectedLeave.status === 'Pending' ? 'warning' : 'danger'}>{selectedLeave.status}</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+                   <div>
+                     <p className="text-gray-500 font-bold mb-1 uppercase text-xs">Duration</p>
+                     <p className="font-semibold text-gray-800">{selectedLeave.startDate} to {selectedLeave.endDate}</p>
+                   </div>
+                   <div>
+                     <p className="text-gray-500 font-bold mb-1 uppercase text-xs">Reason</p>
+                     <p className="font-semibold text-gray-800">{selectedLeave.reason}</p>
+                   </div>
+                </div>
+             </div>
+
+             <div className="border-l-2 border-gray-100 ml-4 pl-6 space-y-6 relative before:absolute before:left-[-9px] before:top-0 before:w-4 before:h-4 before:bg-blue-500 before:rounded-full before:border-4 before:border-white">
+                <div>
+                   <h5 className="font-bold text-gray-800 text-sm">Request Submitted</h5>
+                   <p className="text-xs font-medium text-gray-500 flex items-center mt-1"><Clock className="w-3.5 h-3.5 mr-1" /> Initial filing by employee</p>
+                </div>
+
+                {selectedLeave.comments && selectedLeave.comments.map((comment, index) => (
+                  <div key={index} className="relative before:absolute before:-left-[35px] before:top-1 before:w-4 before:h-4 before:bg-green-500 before:rounded-full before:border-4 before:border-white animate-in slide-in-from-left-2">
+                     <h5 className="font-bold text-gray-800 text-sm">{selectedLeave.status} by {comment.author}</h5>
+                     <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg mt-2 text-sm text-gray-700 flex gap-2">
+                       <MessageSquare className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                       <p>"{comment.text}"</p>
+                     </div>
+                  </div>
+                ))}
+
+                {selectedLeave.status === 'Pending' && (
+                  <div className="relative before:absolute before:-left-[35px] before:top-1 before:w-4 before:h-4 before:bg-orange-400 before:rounded-full before:border-4 before:border-white">
+                     <h5 className="font-bold text-orange-600 text-sm">Pending Manager Review</h5>
+                     <p className="text-xs font-medium text-gray-500 mt-1">Awaiting approval or rejection</p>
+                  </div>
+                )}
+             </div>
+
+             {isManager && selectedLeave.status === 'Pending' && (
+               <div className="mt-8 pt-6 border-t border-gray-200">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Manager Comments</label>
+                  <textarea 
+                    rows="2" 
+                    value={managerComment} 
+                    onChange={e => setManagerComment(e.target.value)} 
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-[#66BB6A]/50 outline-none bg-gray-50 focus:bg-white mb-4" 
+                    placeholder="Add an optional comment before acting..." 
+                  />
+                  <div className="flex gap-3 justify-end">
+                    <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleAction('Rejected')}><X className="w-4 h-4 mr-2" /> Reject</Button>
+                    <Button className="bg-[#2E7D32]" onClick={() => handleAction('Approved')}><Check className="w-4 h-4 mr-2" /> Approve Leave</Button>
+                  </div>
+               </div>
+             )}
+           </div>
+         )}
+       </Modal>
     </div>
   );
 }

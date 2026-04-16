@@ -1,27 +1,19 @@
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import { api } from '../services/api';
 
 const DataContext = createContext();
 
 const initialData = {
-  employees: [
-    { id: 'EMP001', name: 'Rajesh Kumar', role: 'Production Manager', dept: 'Production', email: 'rajesh@udan.com', phone: '+91 98765 43210', status: 'Active' },
-    { id: 'EMP002', name: 'Amit Sharma', role: 'Quality Analyst', dept: 'Quality', email: 'amit@udan.com', phone: '+91 98765 43211', status: 'Active' },
-    { id: 'EMP003', name: 'Priya Singh', role: 'HR Executive', dept: 'HR', email: 'priya@udan.com', phone: '+91 98765 43212', status: 'On Leave' },
-    { id: 'EMP004', name: 'Vikram Patel', role: 'Machine Operator', dept: 'Production', email: 'vikram@udan.com', phone: '+91 98765 43213', status: 'Active' },
-    { id: 'EMP005', name: 'Neha Gupta', role: 'Accountant', dept: 'Accounts', email: 'neha@udan.com', phone: '+91 98765 43214', status: 'Inactive' },
-  ],
-  leaves: [
-    { id: 'L001', empId: 'EMP003', empName: 'Priya Singh', type: 'Sick Leave', startDate: '2023-11-01', endDate: '2023-11-03', status: 'Approved', reason: 'Viral Fever' },
-    { id: 'L002', empId: 'EMP004', empName: 'Vikram Patel', type: 'Casual Leave', startDate: '2023-11-10', endDate: '2023-11-12', status: 'Pending', reason: 'Family Function' },
-  ],
-  attendance: [
-    { date: '2023-10-18', present: 238, absent: 10, late: 2 },
-    { date: '2023-10-17', present: 240, absent: 8, late: 2 },
-  ]
+  employees: [],
+  leaves: [],
+  attendance: [],
+  notices: [],
 };
 
 function dataReducer(state, action) {
   switch (action.type) {
+    case 'SET_INITIAL_DATA':
+      return { ...state, ...action.payload };
     case 'ADD_EMPLOYEE':
       return { ...state, employees: [action.payload, ...state.employees] };
     case 'UPDATE_EMPLOYEE':
@@ -48,9 +40,40 @@ function dataReducer(state, action) {
 
 export function DataProvider({ children }) {
   const [state, dispatch] = useReducer(dataReducer, initialData);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const [empRes, leaveRes, attRes, notRes] = await Promise.all([
+          api.getEmployees(),
+          api.getLeaves(),
+          api.getAttendance(),
+          api.getNotices()
+        ]);
+        
+        dispatch({ 
+          type: 'SET_INITIAL_DATA', 
+          payload: {
+            employees: empRes.data,
+            leaves: leaveRes.data,
+            attendance: attRes.data,
+            notices: notRes.data
+          }
+        });
+      } catch (error) {
+        console.error("Failed to load initial data", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    loadData();
+  }, []);
 
   return (
-    <DataContext.Provider value={{ state, dispatch }}>
+    <DataContext.Provider value={{ state, dispatch, isLoading }}>
       {children}
     </DataContext.Provider>
   );
