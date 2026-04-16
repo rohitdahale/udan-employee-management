@@ -1,26 +1,41 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // Simulating an active session by default for development speed. 
-  // Normally this would be null until explicit login.
-  const [user, setUser] = useState({
-    id: 'EMP042',
-    name: 'Rohit Sharma',
-    role: 'admin', // roles: 'admin' | 'hr' | 'employee'
-  });
+  const [user, setUser] = useState(null);
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
 
-  const login = (userData) => {
+  useEffect(() => {
+    const initSession = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const resp = await api.getCurrentUser();
+          setUser(resp.user);
+        } catch (error) {
+          console.error("Session invalid or expired", error);
+          localStorage.removeItem('token');
+        }
+      }
+      setIsSessionLoading(false);
+    };
+    initSession();
+  }, []);
+
+  const login = (userData, token) => {
+    localStorage.setItem('token', token);
     setUser(userData);
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, role: user?.role, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, logout, role: user?.role, isAuthenticated: !!user, isSessionLoading }}>
       {children}
     </AuthContext.Provider>
   );

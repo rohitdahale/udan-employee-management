@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { api } from '../services/api';
+import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
 
 const DataContext = createContext();
 
@@ -39,11 +41,14 @@ function dataReducer(state, action) {
 }
 
 export function DataProvider({ children }) {
+  const { isAuthenticated } = useAuth();
+  const { addToast } = useToast();
   const [state, dispatch] = useReducer(dataReducer, initialData);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
+      if (!isAuthenticated) return;
       setIsLoading(true);
       try {
         const [empRes, leaveRes, attRes, notRes] = await Promise.all([
@@ -56,21 +61,22 @@ export function DataProvider({ children }) {
         dispatch({ 
           type: 'SET_INITIAL_DATA', 
           payload: {
-            employees: empRes.data,
-            leaves: leaveRes.data,
-            attendance: attRes.data,
-            notices: notRes.data
+            employees: empRes?.data || [],
+            leaves: leaveRes?.data || [],
+            attendance: attRes?.data || [],
+            notices: notRes?.data || []
           }
         });
       } catch (error) {
         console.error("Failed to load initial data", error);
+        addToast("Failed to sync backend data. Some information may be missing.", "error");
       } finally {
         setIsLoading(false);
       }
     }
     
     loadData();
-  }, []);
+  }, [isAuthenticated, addToast]);
 
   return (
     <DataContext.Provider value={{ state, dispatch, isLoading }}>

@@ -8,6 +8,7 @@ import Modal from '../components/Modal';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { api } from '../services/api';
 
 export default function Leaves() {
   const { state, dispatch, isLoading } = useData();
@@ -17,6 +18,7 @@ export default function Leaves() {
   const [activeTab, setActiveTab] = useState('my_leaves'); // 'my_leaves', 'approvals'
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [formData, setFormData] = useState({ type: 'Casual Leave', startDate: '', endDate: '', reason: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isManager = role === 'admin' || role === 'hr';
 
@@ -28,33 +30,46 @@ export default function Leaves() {
   const myLeaves = state.leaves.filter(l => l.empId === user?.id);
   const pendingApprovals = state.leaves.filter(l => l.status === 'Pending');
 
-  const handleApplySubmit = (e) => {
+  const handleApplySubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     const newLeave = {
-      id: `L${String(Math.floor(Math.random() * 900) + 100)}`,
       empId: user?.id,
       empName: user?.name,
       ...formData,
       status: 'Pending'
     };
-    dispatch({ type: 'ADD_LEAVE', payload: newLeave });
-    addToast('Leave request submitted and pending approval!', 'success');
-    setIsApplyModalOpen(false);
-    setFormData({ type: 'Casual Leave', startDate: '', endDate: '', reason: '' });
+    
+    try {
+      const resp = await api.createLeave(newLeave);
+      dispatch({ type: 'ADD_LEAVE', payload: resp.data });
+      addToast('Leave request submitted and pending approval!', 'success');
+      setIsApplyModalOpen(false);
+      setFormData({ type: 'Casual Leave', startDate: '', endDate: '', reason: '' });
+    } catch (error) {
+      addToast(error.message || 'Failed to submit leave request.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleAction = (status) => {
-    dispatch({ 
-      type: 'UPDATE_LEAVE', 
-      payload: { 
-        ...selectedLeave, 
-        status, 
-        comments: [...(selectedLeave.comments || []), { author: user.name, text: managerComment, date: new Date().toISOString() }] 
-      } 
-    });
-    addToast(`Leave request ${status.toLowerCase()}!`, status === 'Approved' ? 'success' : 'error');
-    setSelectedLeave(null);
-    setManagerComment('');
+  const handleAction = async (status) => {
+    setIsSubmitting(true);
+    const payloadUpdates = { 
+      status, 
+      comments: [...(selectedLeave.comments || []), { author: user.name, text: managerComment, date: new Date().toISOString() }] 
+    };
+    try {
+      const resp = await api.updateLeave(selectedLeave.id, payloadUpdates);
+      dispatch({ type: 'UPDATE_LEAVE', payload: resp.data });
+      addToast(`Leave request ${status.toLowerCase()}!`, status === 'Approved' ? 'success' : 'error');
+      setSelectedLeave(null);
+      setManagerComment('');
+    } catch (error) {
+      addToast(error.message || 'Failed to process request.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const myLeavesHeaders = ["Leave Type", "Duration", "Applied On", "Status", "Reason"];
@@ -257,8 +272,8 @@ export default function Leaves() {
                     placeholder="Add an optional comment before acting..." 
                   />
                   <div className="flex gap-3 justify-end">
-                    <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleAction('Rejected')}><X className="w-4 h-4 mr-2" /> Reject</Button>
-                    <Button className="bg-[#2E7D32]" onClick={() => handleAction('Approved')}><Check className="w-4 h-4 mr-2" /> Approve Leave</Button>
+                    <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleAction('Rejected')} disabled={isSubmitting}><X className="w-4 h-4 mr-2" /> {isSubmitting ? 'Processing...' : 'Reject'}</Button>
+                    <Button className="bg-[#2E7D32]" onClick={() => handleAction('Approved')} disabled={isSubmitting}><Check className="w-4 h-4 mr-2" /> {isSubmitting ? 'Processing...' : 'Approve Leave'}</Button>
                   </div>
                </div>
              )}

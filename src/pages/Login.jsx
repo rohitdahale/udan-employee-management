@@ -4,6 +4,7 @@ import { Building2, Lock, User, ArrowRight, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { api } from '../services/api';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -12,79 +13,94 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [role, setRole] = useState('employee');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     
-    setTimeout(() => {
-      login({
-        id: role === 'admin' ? 'EMP001' : role === 'hr' ? 'EMP003' : 'EMP042',
-        name: role === 'admin' ? 'Admin Manager' : role === 'hr' ? 'HR Director' : 'Rohit Sharma',
-        role: role
-      });
-      addToast(`Welcome back! Logged in as ${role.toUpperCase()}`, 'success');
+    // Create an email from the role simply to test the mock logic
+    const email = role === 'admin' ? 'admin@udan.com' : role === 'hr' ? 'hr@udan.com' : 'demo@udan.com';
+    const password = e.target.password.value;
+    
+    try {
+      const resp = await api.login({ email, password });
+      login(resp.user, resp.token);
+      addToast(`Welcome back! Logged in as ${resp.user.role.toUpperCase()}`, 'success');
       navigate('/dashboard');
-    }, 1200);
+    } catch (err) {
+      addToast(err.message || 'Login failed. Please check your credentials.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#003D1F] via-[#2E7D32] to-[#002611] relative overflow-hidden px-4">
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#66BB6A] rounded-full mix-blend-multiply filter blur-[128px] opacity-40"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-[#E8F5E9] rounded-full mix-blend-overlay filter blur-[100px] opacity-20"></div>
+    <div className="min-h-screen flex relative overflow-hidden bg-[#001f0f]">
+      
+      {/* 70% Left Side - Illustration */}
+      <div className="hidden lg:block lg:w-[70%] relative">
+        <img 
+          src="src/assets/assetforlogin.jpeg" 
+          alt="Industrial Manufacturing" 
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#003D1F]/90 via-[#003D1F]/60 to-transparent"></div>
+        <div className="absolute inset-0 flex flex-col justify-end p-16 pb-24">
+           <div className="max-w-3xl">
+             <div className="w-16 h-1 bg-[#66BB6A] mb-8 rounded-full"></div>
+             <h2 className="text-5xl lg:text-6xl font-black text-white leading-tight mb-6 tracking-tight">Precision. Quality. Trust..</h2>
+             <p className="text-xl text-white/80 font-medium max-w-2xl leading-relaxed">Secure employee access portal for Udan Metaplast.</p>
+           </div>
+        </div>
+      </div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-md relative z-10"
-      >
-        <div className="glass-panel-dark rounded-3xl p-8 sm:p-10 shadow-2xl">
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-tr from-[#66BB6A] to-[#E8F5E9] rounded-2xl flex items-center justify-center shadow-lg mb-4 hover:rotate-[10deg] transition-transform duration-300">
-              <Building2 className="text-[#003D1F] h-8 w-8" />
+      {/* 30% Right Side - Login Form */}
+      <div className="w-full lg:w-[30%] min-h-screen flex flex-col justify-center bg-gradient-to-br from-[#003D1F] to-[#001a0c] relative px-8 sm:px-12 py-12 shadow-[-20px_0_40px_-5px_rgba(0,0,0,0.5)] z-10">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#66BB6A] rounded-full mix-blend-overlay filter blur-[100px] opacity-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500 rounded-full mix-blend-overlay filter blur-[100px] opacity-10 pointer-events-none"></div>
+
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="w-full max-w-sm mx-auto relative z-10"
+        >
+          <div className="flex flex-col items-start mb-10">
+            <div className="w-14 h-14 bg-gradient-to-tr from-[#66BB6A] to-[#E8F5E9] rounded-2xl flex items-center justify-center shadow-lg mb-6 shadow-[#66BB6A]/20">
+              <Building2 className="text-[#003D1F] h-7 w-7" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Udan Metaplast</h1>
-            <p className="text-[#66BB6A] font-medium text-sm text-center">Enterprise Management Portal</p>
+            <h1 className="text-3xl font-bold tracking-tight text-white mb-1">Welcome back</h1>
+            <p className="text-[#66BB6A] font-medium text-sm">Sign in to your account</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-4">
               <div className="relative group flex items-center">
                 <Shield className="absolute left-4 z-10 text-white/50 h-5 w-5 transition-colors" />
                 <select 
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full bg-black/30 border border-white/20 rounded-xl pl-12 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#66BB6A] focus:bg-black/40 transition-all font-medium appearance-none cursor-pointer"
+                  className="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-[#66BB6A]/50 focus:border-[#66BB6A]/50 focus:bg-black/40 transition-all font-medium appearance-none cursor-pointer shadow-inner"
                 >
                   <option value="employee" className="text-black">Standard Employee</option>
                   <option value="hr" className="text-black">HR Executive</option>
                   <option value="admin" className="text-black">System Admin</option>
                 </select>
               </div>
-            
+
               <div className="relative group">
-                <User className="absolute left-4 top-3.5 text-white/50 h-5 w-5 group-hover:text-[#66BB6A] transition-colors" />
-                <input 
-                  type="text" 
-                  required
-                  defaultValue="demo@udan.com"
-                  placeholder="Employee ID / Email" 
-                  className="w-full bg-black/20 border border-white/20 rounded-xl pl-12 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#66BB6A] focus:bg-black/30 transition-all font-medium"
-                />
-              </div>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-3.5 text-white/50 h-5 w-5 group-hover:text-[#66BB6A] transition-colors" />
+                <Lock className="absolute left-4 top-4 text-white/50 h-5 w-5 group-hover:text-[#66BB6A] transition-colors" />
                 <input 
                   type="password" 
+                  name="password"
                   required
                   defaultValue="password"
                   placeholder="Password" 
-                  className="w-full bg-black/20 border border-white/20 rounded-xl pl-12 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#66BB6A] focus:bg-black/30 transition-all font-medium"
+                  className="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#66BB6A]/50 focus:border-[#66BB6A]/50 focus:bg-black/40 transition-all font-medium shadow-inner"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm pt-2">
+            <div className="flex items-center justify-between text-sm pt-1">
               <label className="flex items-center gap-2 cursor-pointer group">
                 <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-white/20 bg-black/20 accent-[#66BB6A]" />
                 <span className="text-white/70 group-hover:text-white transition-colors">Remember me</span>
@@ -97,7 +113,7 @@ export default function Login() {
             <button 
               type="submit" 
               disabled={isLoading}
-              className="w-full mt-2 py-3.5 rounded-xl bg-gradient-to-r from-[#66BB6A] to-[#2E7D32] hover:opacity-90 text-white font-bold transition-all shadow-lg flex items-center justify-center gap-2 relative overflow-hidden group disabled:opacity-75"
+              className="w-full mt-4 py-3.5 rounded-xl bg-gradient-to-r from-[#66BB6A] to-[#2E7D32] hover:opacity-90 text-white font-bold transition-all shadow-[0_4px_14px_0_rgba(102,187,106,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group disabled:opacity-75 disabled:cursor-not-allowed"
             >
               <span className="relative z-10 flex items-center gap-2">
                 {isLoading ? 'Authenticating...' : `Login as ${role.toUpperCase()}`}
@@ -107,11 +123,13 @@ export default function Login() {
             </button>
           </form>
           
-          <div className="mt-8 text-center text-xs text-white/40 font-medium tracking-wide">
-            &copy; {new Date().getFullYear()} Udan Metaplast. All rights reserved.
+          <div className="mt-auto pt-16 pb-4">
+             <div className="text-left text-xs text-white/40 font-medium tracking-wide">
+               &copy; {new Date().getFullYear()} Udan Metaplast. All rights reserved.
+             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

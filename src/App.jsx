@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -13,7 +14,16 @@ import Settings from './pages/Settings';
 import { useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isSessionLoading } = useAuth();
+  
+  if (isSessionLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-10 h-10 text-[#2E7D32] animate-spin" />
+      </div>
+    );
+  }
+  
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 

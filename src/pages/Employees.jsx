@@ -9,6 +9,7 @@ import EmptyState from '../components/EmptyState';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { api } from '../services/api';
 
 export default function Employees() {
   const { state, dispatch, isLoading } = useData();
@@ -24,31 +25,57 @@ export default function Employees() {
 
   // Form state
   const [formData, setFormData] = useState({ name: '', role: '', dept: '', email: '', phone: '', status: 'Active' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isManager = role === 'admin' || role === 'hr';
 
   const resetForm = () => setFormData({ name: '', role: '', dept: '', email: '', phone: '', status: 'Active' });
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
-    const newEmp = { ...formData, id: `EMP${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`, joinDate: new Date().toISOString().split('T')[0] };
-    dispatch({ type: 'ADD_EMPLOYEE', payload: newEmp });
-    addToast(`${newEmp.name} has been added successfully!`, 'success');
-    setIsAddOpen(false);
-    resetForm();
+    setIsSubmitting(true);
+    const newEmpData = { ...formData, joinDate: new Date().toISOString().split('T')[0] };
+    
+    try {
+      const resp = await api.createEmployee(newEmpData);
+      dispatch({ type: 'ADD_EMPLOYEE', payload: resp.data });
+      addToast(`${resp.data.name} has been added successfully!`, 'success');
+      setIsAddOpen(false);
+      resetForm();
+    } catch (err) {
+      addToast(err.message || 'Failed to create employee.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
-    dispatch({ type: 'UPDATE_EMPLOYEE', payload: { ...formData, id: selectedEmp.id } });
-    addToast(`${formData.name}'s profile updated successfully!`, 'success');
-    setModalType('');
+    setIsSubmitting(true);
+    try {
+      const resp = await api.updateEmployee(selectedEmp.id, formData);
+      dispatch({ type: 'UPDATE_EMPLOYEE', payload: resp.data });
+      addToast(`${resp.data.name}'s profile updated successfully!`, 'success');
+      setModalType('');
+    } catch (err) {
+      addToast(err.message || 'Failed to update employee.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDelete = () => {
-    dispatch({ type: 'DELETE_EMPLOYEE', payload: selectedEmp.id });
-    addToast(`Employee record permanently deleted.`, 'error');
-    setModalType('');
+  const handleDelete = async () => {
+    setIsSubmitting(true);
+    try {
+      await api.deleteEmployee(selectedEmp.id);
+      dispatch({ type: 'DELETE_EMPLOYEE', payload: selectedEmp.id });
+      addToast(`Employee record permanently deleted.`, 'error');
+      setModalType('');
+    } catch (err) {
+      addToast(err.message || 'Failed to delete employee.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const openModal = (emp, type) => {
@@ -275,8 +302,8 @@ export default function Employees() {
             </div>
           </div>
           <div className="pt-5 flex justify-end gap-3 border-t border-gray-100 mt-6">
-            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); setModalType(''); }}>Cancel</Button>
-            <Button type="submit">{isAddOpen ? 'Save Employee' : 'Update Profile'}</Button>
+            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); setModalType(''); }} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Processing...' : (isAddOpen ? 'Save Employee' : 'Update Profile')}</Button>
           </div>
         </form>
       </Modal>
@@ -323,8 +350,10 @@ export default function Employees() {
            </div>
         </div>
         <div className="flex justify-end gap-3 mt-2">
-          <Button variant="outline" onClick={() => setModalType('')}>Keep Employee</Button>
-          <button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-100 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md">Yes, Delete Record</button>
+          <Button variant="outline" onClick={() => setModalType('')} disabled={isSubmitting}>Keep Employee</Button>
+          <button onClick={handleDelete} disabled={isSubmitting} className="bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-100 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md disabled:opacity-75 disabled:cursor-not-allowed text-center min-w-[160px]">
+             {isSubmitting ? 'Deleting...' : 'Yes, Delete Record'}
+          </button>
         </div>
       </Modal>
     </div>

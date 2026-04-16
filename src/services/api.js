@@ -26,69 +26,215 @@ let mockDB = {
   ]
 };
 
-// Simulated fetcher
+// Core Fetch Wrapper
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const USE_MOCK = import.meta.env.VITE_ENABLE_MOCK_FALLBACK === 'true';
+
+async function fetchClient(endpoint, options = {}) {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      // Backend returned an error response (4xx, 5xx)
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      const error = new Error(errorData.message || 'API request failed');
+      error.status = response.status;
+      error.data = errorData;
+      throw error; // Let the caller or interceptor catch this
+    }
+
+    return await response.json();
+  } catch (error) {
+    // If it's a structural network failure, handle fallback
+    if (error.name === 'TypeError' || error.message === 'Failed to fetch') {
+      if (USE_MOCK) {
+        console.warn(`Backend unreachable for ${endpoint}, falling back to mock data...`);
+        return null; // Signals the caller to use mock bypass
+      }
+    }
+    // Re-throw genuine backend errors
+    throw error;
+  }
+}
+
+// Fallback simulator
+const fallbackDelay = async (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Live + Fallback API methods
 export const api = {
+  // Auth API
+  login: async (credentials) => {
+    try {
+      const resp = await fetchClient('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
+      if (resp) return resp; // real data
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if (err.status) throw err; // Real backend 400/401 error
+      await fallbackDelay(1000);
+      
+      // Mock validation
+      if(credentials.password !== 'password') {
+         const mockErr = new Error('Invalid credentials'); mockErr.status = 401; throw mockErr;
+      }
+      
+      // Mock Login
+      let role = 'employee';
+      if(credentials.email?.includes('admin')) role = 'admin';
+      else if (credentials.email?.includes('hr')) role = 'hr';
+      
+      return {
+        token: `mock-jwt-token-${role}`,
+        user: {
+          id: role === 'admin' ? 'EMP001' : role === 'hr' ? 'EMP003' : 'EMP042',
+          name: role === 'admin' ? 'Admin Manager' : role === 'hr' ? 'HR Director' : 'Rohit Sharma',
+          role: role
+        }
+      };
+    }
+  },
+
+  getCurrentUser: async () => {
+    try {
+      const resp = await fetchClient('/auth/me');
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch (err) {
+      if (err.status) throw err;
+      await fallbackDelay();
+      const token = localStorage.getItem('token');
+      if(!token) { const e = new Error('Not auth'); e.status = 401; throw e; }
+      const role = token.split('-')[2] || 'employee';
+      return {
+        user: {
+          id: role === 'admin' ? 'EMP001' : role === 'hr' ? 'EMP003' : 'EMP042',
+          name: role === 'admin' ? 'Admin Manager' : role === 'hr' ? 'HR Director' : 'Rohit Sharma',
+          role: role
+        }
+      };
+    }
+  },
+
   // Employees API
   getEmployees: async () => {
-    await delay();
-    return { data: [...mockDB.employees] };
+    try {
+      const resp = await fetchClient('/employees');
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if(err.status) throw err;
+      await fallbackDelay();
+      return { data: [...mockDB.employees] };
+    }
   },
   createEmployee: async (employeeData) => {
-    await delay();
-    const newEmployee = { ...employeeData, id: `EMP${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}` };
-    mockDB.employees = [newEmployee, ...mockDB.employees];
-    return { data: newEmployee };
+    try {
+      const resp = await fetchClient('/employees', { method: 'POST', body: JSON.stringify(employeeData) });
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if(err.status) throw err;
+      await fallbackDelay();
+      const newEmployee = { ...employeeData, id: `EMP${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}` };
+      mockDB.employees = [newEmployee, ...mockDB.employees];
+      return { data: newEmployee };
+    }
   },
   updateEmployee: async (id, updates) => {
-    await delay();
-    mockDB.employees = mockDB.employees.map(emp => emp.id === id ? { ...emp, ...updates } : emp);
-    return { data: mockDB.employees.find(e => e.id === id) };
+    try {
+      const resp = await fetchClient(`/employees/${id}`, { method: 'PUT', body: JSON.stringify(updates) });
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if(err.status) throw err;
+      await fallbackDelay();
+      mockDB.employees = mockDB.employees.map(emp => emp.id === id ? { ...emp, ...updates } : emp);
+      return { data: mockDB.employees.find(e => e.id === id) };
+    }
   },
   deleteEmployee: async (id) => {
-    await delay();
-    mockDB.employees = mockDB.employees.filter(emp => emp.id !== id);
-    return { success: true };
+    try {
+      const resp = await fetchClient(`/employees/${id}`, { method: 'DELETE' });
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if(err.status) throw err;
+      await fallbackDelay();
+      mockDB.employees = mockDB.employees.filter(emp => emp.id !== id);
+      return { success: true };
+    }
   },
   
   // Leaves API
   getLeaves: async () => {
-    await delay();
-    return { data: [...mockDB.leaves] };
+    try {
+      const resp = await fetchClient('/leaves');
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if(err.status) throw err;
+      await fallbackDelay();
+      return { data: [...mockDB.leaves] };
+    }
   },
   createLeave: async (leaveData) => {
-    await delay();
-    const newLeave = { ...leaveData, id: `L${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`, comments: [] };
-    mockDB.leaves = [newLeave, ...mockDB.leaves];
-    return { data: newLeave };
+    try {
+      const resp = await fetchClient('/leaves', { method: 'POST', body: JSON.stringify(leaveData) });
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if(err.status) throw err;
+      await fallbackDelay();
+      const newLeave = { ...leaveData, id: `L${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`, comments: [] };
+      mockDB.leaves = [newLeave, ...mockDB.leaves];
+      return { data: newLeave };
+    }
   },
   updateLeave: async (id, updates) => {
-    await delay();
-    mockDB.leaves = mockDB.leaves.map(l => l.id === id ? { ...l, ...updates } : l);
-    return { data: mockDB.leaves.find(l => l.id === id) };
+    try {
+      const resp = await fetchClient(`/leaves/${id}`, { method: 'PUT', body: JSON.stringify(updates) });
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if(err.status) throw err;
+      await fallbackDelay();
+      mockDB.leaves = mockDB.leaves.map(l => l.id === id ? { ...l, ...updates } : l);
+      return { data: mockDB.leaves.find(l => l.id === id) };
+    }
   },
 
   // Attendance API
   getAttendance: async () => {
-    await delay();
-    return { data: [...mockDB.attendance] };
+    try {
+      const resp = await fetchClient('/attendance');
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if(err.status) throw err;
+      await fallbackDelay();
+      return { data: [...mockDB.attendance] };
+    }
   },
 
   // Notices API
   getNotices: async () => {
-    await delay();
-    return { data: [...mockDB.notices] };
-  },
-
-  // General Dashboard Stats API
-  getDashboardStats: async () => {
-    await delay();
-    return {
-      data: {
-        totalEmployees: mockDB.employees.length,
-        presentToday: 238, // Mock metric
-        onLeave: mockDB.leaves.filter(l => l.status === 'Approved').length, // Simple mock calculation
-        departments: [...new Set(mockDB.employees.map(e => e.dept))].length
-      }
-    };
+    try {
+      const resp = await fetchClient('/notices');
+      if (resp) return resp;
+      throw new Error("Trigger fallback");
+    } catch(err) {
+      if(err.status) throw err;
+      await fallbackDelay();
+      return { data: [...mockDB.notices] };
+    }
   }
 };
