@@ -4,6 +4,7 @@ import { Building2, Lock, User, ArrowRight, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import loginImage from '../assets/assetforlogin.jpeg';
 import { api } from '../services/api';
 
 export default function Login() {
@@ -11,14 +12,12 @@ export default function Login() {
   const { login } = useAuth();
   const { addToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [role, setRole] = useState('employee');
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Create an email from the role simply to test the mock logic
-    const email = role === 'admin' ? 'admin@udan.com' : role === 'hr' ? 'hr@udan.com' : 'demo@udan.com';
+    const email = e.target.email.value;
     const password = e.target.password.value;
     
     try {
@@ -38,11 +37,11 @@ export default function Login() {
       
       {/* 70% Left Side - Illustration */}
       <div className="hidden lg:block lg:w-[70%] relative">
-        <img 
-          src="src/assets/assetforlogin.jpeg" 
-          alt="Industrial Manufacturing" 
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+<img 
+  src={loginImage}
+  alt="Industrial Manufacturing"
+  className="absolute inset-0 w-full h-full object-cover"
+/>
         <div className="absolute inset-0 bg-gradient-to-r from-[#003D1F]/90 via-[#003D1F]/60 to-transparent"></div>
         <div className="absolute inset-0 flex flex-col justify-end p-16 pb-24">
            <div className="max-w-3xl">
@@ -74,17 +73,15 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-4">
-              <div className="relative group flex items-center">
-                <Shield className="absolute left-4 z-10 text-white/50 h-5 w-5 transition-colors" />
-                <select 
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-[#66BB6A]/50 focus:border-[#66BB6A]/50 focus:bg-black/40 transition-all font-medium appearance-none cursor-pointer shadow-inner"
-                >
-                  <option value="employee" className="text-black">Standard Employee</option>
-                  <option value="hr" className="text-black">HR Executive</option>
-                  <option value="admin" className="text-black">System Admin</option>
-                </select>
+              <div className="relative group">
+                <User className="absolute left-4 top-4 text-white/50 h-5 w-5 group-hover:text-[#66BB6A] transition-colors" />
+                <input 
+                  type="email" 
+                  name="email"
+                  required
+                  placeholder="Email Address" 
+                  className="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#66BB6A]/50 focus:border-[#66BB6A]/50 focus:bg-black/40 transition-all font-medium shadow-inner"
+                />
               </div>
 
               <div className="relative group">
@@ -93,7 +90,6 @@ export default function Login() {
                   type="password" 
                   name="password"
                   required
-                  defaultValue="password"
                   placeholder="Password" 
                   className="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#66BB6A]/50 focus:border-[#66BB6A]/50 focus:bg-black/40 transition-all font-medium shadow-inner"
                 />
@@ -116,7 +112,7 @@ export default function Login() {
               className="w-full mt-4 py-3.5 rounded-xl bg-gradient-to-r from-[#66BB6A] to-[#2E7D32] hover:opacity-90 text-white font-bold transition-all shadow-[0_4px_14px_0_rgba(102,187,106,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group disabled:opacity-75 disabled:cursor-not-allowed"
             >
               <span className="relative z-10 flex items-center gap-2">
-                {isLoading ? 'Authenticating...' : `Login as ${role.toUpperCase()}`}
+                {isLoading ? 'Authenticating...' : 'Secure Login'}
                 {!isLoading && <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />}
               </span>
               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
