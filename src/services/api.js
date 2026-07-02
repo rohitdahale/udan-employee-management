@@ -96,8 +96,13 @@ export const api = {
         token: `mock-jwt-token-${role}`,
         user: {
           id: role === 'admin' ? 'EMP001' : role === 'hr' ? 'EMP003' : 'EMP042',
-          name: role === 'admin' ? 'Admin Manager' : role === 'hr' ? 'HR Director' : 'Rohit Sharma',
-          role: role
+          name: role === 'admin' ? 'Director (Admin)' : role === 'hr' ? 'HR Director' : 'Rohit Sharma',
+          role: role,
+          email: role === 'admin' ? 'director@udanmetaplast.in' : role === 'hr' ? 'hr@udanmetaplast.in' : 'rohit.s@udanmetaplast.com',
+          phone: role === 'admin' ? '+91 00000 00000' : role === 'hr' ? '+91 98765 43212' : '+91 98765 43210',
+          dept: role === 'admin' ? 'Management' : role === 'hr' ? 'HR' : 'Production',
+          joinDate: role === 'admin' ? '2020-01-01' : role === 'hr' ? '2022-06-01' : '2021-03-10',
+          status: 'Active',
         }
       };
     }
@@ -117,8 +122,13 @@ export const api = {
       return {
         user: {
           id: role === 'admin' ? 'EMP001' : role === 'hr' ? 'EMP003' : 'EMP042',
-          name: role === 'admin' ? 'Admin Manager' : role === 'hr' ? 'HR Director' : 'Rohit Sharma',
-          role: role
+          name: role === 'admin' ? 'Director (Admin)' : role === 'hr' ? 'HR Director' : 'Rohit Sharma',
+          role: role,
+          email: role === 'admin' ? 'director@udanmetaplast.in' : role === 'hr' ? 'hr@udanmetaplast.in' : 'rohit.s@udanmetaplast.com',
+          phone: role === 'admin' ? '+91 00000 00000' : role === 'hr' ? '+91 98765 43212' : '+91 98765 43210',
+          dept: role === 'admin' ? 'Management' : role === 'hr' ? 'HR' : 'Production',
+          joinDate: role === 'admin' ? '2020-01-01' : role === 'hr' ? '2022-06-01' : '2021-03-10',
+          status: 'Active',
         }
       };
     }

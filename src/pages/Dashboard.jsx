@@ -30,15 +30,11 @@ export default function Dashboard() {
 
   const recentHires = [...state.employees].sort((a, b) => new Date(b.joinDate) - new Date(a.joinDate)).slice(0, 3);
 
-  // Mock past week for BarChart to still look nice since our API attendance history is short
-  const attendanceData = [
-    { name: 'Mon', present: 240, absent: 10 },
-    { name: 'Tue', present: 238, absent: 12 },
-    { name: 'Wed', present: 245, absent: 5 },
-    { name: 'Thu', present: 242, absent: 8 },
-    { name: 'Fri', present: 235, absent: 15 },
-    { name: 'Sat', present: 220, absent: 30 },
-  ];
+  const attendanceData = state.attendance.map(a => ({
+    name: new Date(a.date).toLocaleDateString('en-US', { weekday: 'short' }),
+    present: a.present,
+    absent: a.absent
+  })).reverse();
 
   if (isLoading) {
     return (

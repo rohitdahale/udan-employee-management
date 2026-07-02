@@ -69,7 +69,7 @@ export default function Settings() {
                           </div>
                           <div>
                             <label className="block text-sm font-bold text-gray-700 mb-1.5">Corporate Address</label>
-                            <textarea disabled={!isManager} rows="3" defaultValue="Plot No. 42, MIDC Industrial Area, Phase II&#10;Andheri East, Mumbai - 400093&#10;Maharashtra, India" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#66BB6A]/50 outline-none bg-gray-50 focus:bg-white transition-colors disabled:opacity-60" />
+                            <textarea disabled={!isManager} rows="3" defaultValue="Plot no H146/1/1, near Nashik&#10;MIDC Ambad, Nashik&#10;Maharashtra 422010" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#66BB6A]/50 outline-none bg-gray-50 focus:bg-white transition-colors disabled:opacity-60" />
                           </div>
                        </div>
                        {isManager && (

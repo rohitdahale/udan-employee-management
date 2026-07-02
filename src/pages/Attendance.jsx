@@ -13,26 +13,47 @@ export default function Attendance() {
   const { role } = useAuth();
   const { addToast } = useToast();
   
-  const [markedToday, setMarkedToday] = useState(false);
+  const [markedToday, setMarkedToday] = useState(() => {
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return localStorage.getItem('attendance_marked_date') === today;
+  });
+
+  const [personalLogs, setPersonalLogs] = useState(() => {
+    const saved = localStorage.getItem('personalLogs');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const isManager = role === 'admin' || role === 'hr';
 
   const markAttendance = (status) => {
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     setMarkedToday(true);
+    localStorage.setItem('attendance_marked_date', today);
+    
+    const newLog = {
+      date: today,
+      shift: 'Shift A',
+      status: status === 'present' ? 'Present' : 'Absent',
+      time: status === 'present' ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+      outTime: '--',
+      overtime: '--',
+      notes: 'Self marked'
+    };
+    
+    const updatedLogs = [newLog, ...personalLogs];
+    setPersonalLogs(updatedLogs);
+    localStorage.setItem('personalLogs', JSON.stringify(updatedLogs));
+
     addToast(`You have marked yourself as ${status.toUpperCase()} today.`, status === 'present' ? 'success' : 'warning');
   };
 
   const attendanceLogHeaders = ["Date", "Shift", "Status", "In Time", "Out Time", "Overtime", "Notes"];
-  
-  // Dummy data specifically for the logged in user
-  const personalLogs = [
-    { date: 'Oct 18, 2023', shift: 'Shift A', status: 'Present', time: '07:55 AM', outTime: '04:15 PM', overtime: '15m', notes: 'On Time' },
-    { date: 'Oct 17, 2023', shift: 'Shift A', status: 'Present', time: '08:02 AM', outTime: '05:30 PM', overtime: '1h 30m', notes: 'Grace Period' },
-    { date: 'Oct 16, 2023', shift: 'Shift A', status: 'Late', time: '08:45 AM', outTime: '04:00 PM', overtime: '0m', notes: 'Traffic' },
-    { date: 'Oct 14, 2023', shift: 'Shift B', status: 'Absent', time: '--', outTime: '--', overtime: '--', notes: 'Sick Leave applied' },
-  ];
 
   const exportCSV = () => {
+    if (personalLogs.length === 0) {
+      addToast("No logs to export", "warning");
+      return;
+    }
     const headers = attendanceLogHeaders.join(",");
     const rows = personalLogs.map(log => 
       `"${log.date}","${log.shift}","${log.status}","${log.time}","${log.outTime}","${log.overtime}","${log.notes}"`
@@ -124,15 +145,15 @@ export default function Attendance() {
           <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">M-T-D Pulse</h3>
           <div className="w-full flex justify-between items-end border-b border-gray-100 pb-2 mb-2">
              <span className="font-bold text-gray-800">Present</span>
-             <span className="font-bold text-[#2E7D32] text-xl">16 days</span>
+             <span className="font-bold text-[#2E7D32] text-xl">{personalLogs.filter(l => l.status === 'Present').length} days</span>
           </div>
           <div className="w-full flex justify-between items-end border-b border-gray-100 pb-2 mb-2">
              <span className="font-bold text-gray-800">Late</span>
-             <span className="font-bold text-yellow-600 text-xl">01 days</span>
+             <span className="font-bold text-yellow-600 text-xl">{personalLogs.filter(l => l.status === 'Late').length} days</span>
           </div>
           <div className="w-full flex justify-between items-end">
              <span className="font-bold text-gray-800">Absent</span>
-             <span className="font-bold text-red-600 text-xl">01 days</span>
+             <span className="font-bold text-red-600 text-xl">{personalLogs.filter(l => l.status === 'Absent').length} days</span>
           </div>
         </motion.div>
       </div>
@@ -148,8 +169,10 @@ export default function Attendance() {
            </div>
         </div>
         <div className="text-right">
-           <p className="text-3xl font-black text-orange-600">12h 45m</p>
-           <p className="text-xs text-orange-800/60 font-bold uppercase tracking-wider mt-1">+ ₹3,400 Estimated</p>
+           <p className="text-3xl font-black text-orange-600">
+             {personalLogs.filter(l => l.overtime && l.overtime !== '--' && l.overtime !== '0m').length > 0 ? 'Calculated' : '0h 0m'}
+           </p>
+           <p className="text-xs text-orange-800/60 font-bold uppercase tracking-wider mt-1">+ ₹0 Estimated</p>
         </div>
       </motion.div>
 
